@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCloset } from "@/lib/store";
@@ -12,6 +19,18 @@ import { AvatarStage } from "@/components/AvatarStage";
 import { Wardrobe } from "@/components/Wardrobe";
 import { GhostButton } from "@/components/ui";
 import { LogoutButton } from "@/components/LogoutButton";
+import { getChallenge, evalChallenge, saveResult } from "@/lib/challenges";
+
+// Lee ?challenge=<id> de la URL sin setState-en-effect (useSyncExternalStore).
+function subscribeUrl(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("popstate", cb);
+  return () => window.removeEventListener("popstate", cb);
+}
+function readChallengeId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("challenge");
+}
 
 export default function Play() {
   const router = useRouter();
@@ -34,6 +53,18 @@ export default function Play() {
   const [adding, setAdding] = useState(false);
   const [addStatus, setAddStatus] = useState<string | null>(null);
 
+  // Reto activo (viene por ?challenge=<id>).
+  const challengeId = useSyncExternalStore(
+    subscribeUrl,
+    readChallengeId,
+    () => null,
+  );
+  const challenge = useMemo(
+    () => (challengeId ? getChallenge(challengeId) ?? null : null),
+    [challengeId],
+  );
+  const [celebrate, setCelebrate] = useState(false);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -49,6 +80,28 @@ export default function Play() {
     () => garments.filter((g) => selected.includes(g.id)),
     [garments, selected],
   );
+
+  // Evaluación del reto en vivo (sin IA): se recalcula con cada cambio.
+  const challengeEval = useMemo(
+    () => (challenge ? evalChallenge(challenge, selectedGarments) : null),
+    [challenge, selectedGarments],
+  );
+
+  // Estrellas ganadas en vivo (0-3). Detectamos el flanco "ganó más estrellas"
+  // durante el render (patrón recomendado: ajustar estado en render, no en effect).
+  const earnedStars = challengeEval?.stars ?? 0;
+  const [prevStars, setPrevStars] = useState(0);
+  if (earnedStars !== prevStars) {
+    const increased = earnedStars > prevStars;
+    setPrevStars(earnedStars);
+    // Celebra al superar el nivel (1ª estrella) o al conseguir las 3.
+    if (increased && (prevStars === 0 || earnedStars === 3)) setCelebrate(true);
+  }
+
+  // Persistir el mejor resultado (localStorage), sin setState.
+  useEffect(() => {
+    if (challenge && earnedStars > 0) saveResult(challenge.id, earnedStars);
+  }, [challenge, earnedStars]);
 
   // Clave del combo ya generado (para no repetir) + ref para el debounce.
   const lastGenKey = useRef<string>("");
@@ -179,12 +232,80 @@ export default function Play() {
           👗 Glamour Studio
         </Link>
         <div className="flex items-center gap-2">
+          <Link href="/challenges">
+            <GhostButton>🏆 Retos</GhostButton>
+          </Link>
           <Link href="/onboarding?step=2">
             <GhostButton>Mi guardarropa</GhostButton>
           </Link>
           <LogoutButton />
         </div>
       </div>
+
+      {/* Banner del reto activo */}
+      {challenge && challengeEval && (
+        <div
+          className={`mt-4 rounded-3xl border-2 p-4 shadow-lg backdrop-blur transition ${
+            challengeEval.complete
+              ? "border-pink bg-pink-soft/50 shadow-pink/20"
+              : "border-white bg-white/70 shadow-pink/10"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{challenge.emoji}</span>
+              <div>
+                <h2 className="font-display text-lg font-bold text-pink-dark">
+                  Reto: {challenge.title}
+                </h2>
+                <p className="text-sm text-foreground/60">{challenge.prompt}</p>
+              </div>
+            </div>
+            <Link
+              href="/challenges"
+              className="shrink-0 text-xs font-semibold text-pink-dark/60 hover:text-pink-dark"
+            >
+              Cambiar reto
+            </Link>
+          </div>
+
+          {/* Metas por estrella (en vivo) */}
+          <div className="mt-3 space-y-1.5">
+            {challengeEval.tiers.map((t) => (
+              <div
+                key={t.star}
+                className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
+                  t.done
+                    ? "bg-pink text-white"
+                    : "bg-white/70 text-pink-dark/70"
+                }`}
+              >
+                <span className="tracking-tight">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={
+                        i < t.star
+                          ? t.done
+                            ? "text-yellow-200"
+                            : "text-pink"
+                          : "opacity-30"
+                      }
+                    >
+                      ★
+                    </span>
+                  ))}
+                </span>
+                <span className="flex-1">{t.label}</span>
+                {t.done && <span>✓</span>}
+              </div>
+            ))}
+            <p className="pt-1 text-center font-display text-sm font-bold text-pink-dark">
+              {challengeEval.stars} / 3 estrellas
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* Columna izquierda: escenario */}
@@ -327,6 +448,54 @@ export default function Play() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Celebración al completar un reto */}
+      {celebrate && challenge && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-pink-dark/40 px-4 backdrop-blur-sm"
+          onClick={() => setCelebrate(false)}
+        >
+          <div
+            className="animate-pop w-full max-w-sm rounded-[2rem] border-4 border-white bg-white p-7 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="animate-float text-6xl">{challenge.emoji}</div>
+            <h2 className="mt-3 font-display text-2xl font-extrabold text-pink-dark">
+              {earnedStars >= 3 ? "¡Perfecto! 3 estrellas" : "¡Nivel superado!"}
+            </h2>
+            <p className="mt-1 text-sm text-foreground/60">{challenge.title}</p>
+            <div className="mt-3 text-4xl tracking-widest">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <span
+                  key={i}
+                  className={i < earnedStars ? "text-pink" : "text-pink-soft"}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+            <p className="mt-1 text-sm font-semibold text-pink-dark">
+              {earnedStars >= 3
+                ? "¡Lo lograste! 🎉"
+                : "¿Puedes llegar a las 3 estrellas?"}
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                onClick={() => setCelebrate(false)}
+                className="rounded-full bg-pink px-6 py-3 font-display text-lg font-bold text-white shadow-[0_5px_0_var(--pink-dark)] transition active:translate-y-0.5 active:shadow-[0_2px_0_var(--pink-dark)] hover:brightness-105"
+              >
+                ¡Genial! Seguir aquí
+              </button>
+              <button
+                onClick={() => router.push("/challenges")}
+                className="rounded-full border-2 border-pink/40 bg-white px-6 py-2 font-semibold text-pink-dark transition hover:border-pink"
+              >
+                🏆 Otro reto
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Banner de estado al añadir prendas */}
