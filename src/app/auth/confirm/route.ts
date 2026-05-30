@@ -1,0 +1,23 @@
+import { type EmailOtpType } from "@supabase/supabase-js";
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+// Maneja el enlace de confirmación de email de Supabase.
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
+  const next = searchParams.get("next") ?? "/play";
+
+  if (token_hash && type) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+    if (!error) {
+      return NextResponse.redirect(new URL(next, request.url));
+    }
+  }
+
+  return NextResponse.redirect(
+    new URL("/login?error=No%20se%20pudo%20confirmar", request.url),
+  );
+}
