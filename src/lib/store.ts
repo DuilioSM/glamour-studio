@@ -26,6 +26,11 @@ interface ClosetState {
   setGarmentCategory: (id: string, category: Category) => Promise<void>;
   removeGarment: (id: string) => Promise<void>;
 
+  /** Re-lista las prendas y mezcla las nuevas (p. ej. importadas por la extensión). */
+  syncGarments: () => Promise<void>;
+  /** Procesa prendas importadas por la extensión (quita fondo + clasifica). */
+  processPending: () => Promise<void>;
+
   toggleSelect: (id: string) => void;
   clearSelection: () => void;
 
@@ -123,12 +128,74 @@ export const useCloset = create<ClosetState>()((set, get) => ({
     }));
   },
 
+  syncGarments: async () => {
+    if (!get().loaded || get().loading) return;
+    const fresh = await data.listGarments();
+    set((s) => {
+      const byId = new Map(s.garments.map((g) => [g.id, g]));
+      // Mezcla por id: conserva las que no cambiaron de estado (mantiene su src
+      // ya resuelta para no recargar la imagen) y trae las nuevas/actualizadas.
+      const merged = fresh.map((f) => {
+        const ex = byId.get(f.id);
+        return ex && ex.pending === f.pending ? ex : f;
+      });
+      const changed =
+        merged.length !== s.garments.length ||
+        merged.some((g, i) => g !== s.garments[i]);
+      return changed ? { garments: merged } : s;
+    });
+  },
+
+  processPending: async () => {
+    const pending = get().garments.filter((g) => g.pending);
+    if (pending.length === 0) return;
+
+    // Importamos las utilidades de imagen solo cuando hace falta (WASM pesado).
+    const { processUploadBlob } = await import("@/lib/image");
+
+    for (const g of pending) {
+      try {
+        // 1) Descargamos la imagen cruda que subió la extensión.
+        const res = await fetch(g.src);
+        const raw = await res.blob();
+        // 2) Quitamos el fondo y redimensionamos (igual que al subir a mano).
+        const processed = await processUploadBlob(raw, 900, { removeBg: true });
+        // 3) Clasificamos la prenda ya recortada.
+        const category = await data.classifyGarment(processed);
+        // 4) Reemplazamos la imagen en Storage y limpiamos el flag.
+        await data.finalizePendingGarment(g, processed, category);
+
+        const url = URL.createObjectURL(processed);
+        set((s) => ({
+          garments: s.garments.map((x) =>
+            x.id === g.id
+              ? { ...x, pending: false, category, src: url }
+              : x,
+          ),
+        }));
+      } catch (e) {
+        console.error("[closet.processPending]", g.id, e);
+        // La dejamos como pending para reintentar en la próxima carga.
+      }
+    }
+  },
+
   toggleSelect: (id) =>
-    set((s) => ({
-      selected: s.selected.includes(id)
-        ? s.selected.filter((x) => x !== id)
-        : [...s.selected, id],
-    })),
+    set((s) => {
+      // Si ya estaba seleccionada -> la quitamos.
+      if (s.selected.includes(id)) {
+        return { selected: s.selected.filter((x) => x !== id) };
+      }
+      // Al seleccionar, solo puede haber UNA prenda por categoría:
+      // quitamos cualquier otra seleccionada del mismo tipo.
+      const cat = s.garments.find((g) => g.id === id)?.category;
+      const withoutSameCat = cat
+        ? s.selected.filter(
+            (sid) => s.garments.find((g) => g.id === sid)?.category !== cat,
+          )
+        : s.selected;
+      return { selected: [...withoutSameCat, id] };
+    }),
   clearSelection: () => set({ selected: [] }),
 
   saveLook: async (imageDataUrl, garmentIds) => {

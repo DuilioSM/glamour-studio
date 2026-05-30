@@ -130,6 +130,14 @@ function GarmentCard({
           ✓
         </span>
       )}
+      {g.pending && (
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl bg-white/70 backdrop-blur-[1px]">
+          <span className="h-5 w-5 animate-spin-slow rounded-full border-2 border-pink-soft border-t-pink" />
+          <span className="text-[9px] font-bold uppercase tracking-wide text-pink-dark">
+            Procesando
+          </span>
+        </span>
+      )}
     </button>
   );
 }

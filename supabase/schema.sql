@@ -16,8 +16,15 @@ create table if not exists public.garments (
   storage_path text not null,
   category text not null default 'other',
   name text not null default 'Prenda',
+  -- true cuando la prenda se importó desde la extensión y aún falta
+  -- quitarle el fondo / clasificarla (lo hace la web app al cargar).
+  pending boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Migración para bases ya existentes (no rompe nada si ya existe):
+alter table public.garments
+  add column if not exists pending boolean not null default false;
 
 create table if not exists public.looks (
   id uuid primary key default gen_random_uuid(),

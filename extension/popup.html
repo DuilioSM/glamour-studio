@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --pink: #ff5fa2;
+        --pink-dark: #d63a7d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        width: 280px;
+        margin: 0;
+        padding: 16px;
+        font: 14px/1.4 system-ui, -apple-system, sans-serif;
+        color: #3a2a33;
+        background: #fff5fa;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 16px;
+        color: var(--pink-dark);
+      }
+      p { margin: 0 0 12px; color: #7a6670; font-size: 12px; }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid #ffd6e6;
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
+      .dot { width: 9px; height: 9px; border-radius: 999px; background: #c9c2c6; flex: none; }
+      .dot.on { background: #34c759; }
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 999px;
+        font: 700 14px system-ui, sans-serif;
+        cursor: pointer;
+        margin-bottom: 8px;
+      }
+      .primary { color: #fff; background: linear-gradient(#ff6aa9, #ff4f99); box-shadow: 0 4px 0 var(--pink-dark); }
+      .primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--pink-dark); }
+      .ghost { color: var(--pink-dark); background: #fff; border: 2px solid #ffc4dd; }
+      .link { background: none; color: #9a8791; font-size: 12px; box-shadow: none; margin: 4px 0 0; }
+      .hint { font-size: 11px; color: #9a8791; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>👗 Glamour Studio</h1>
+    <p>Añade prendas de tiendas a tu guardarropa.</p>
+
+    <div class="status">
+      <span id="dot" class="dot"></span>
+      <span id="statusText">Comprobando…</span>
+    </div>
+
+    <button id="addTab" class="primary">＋ Añadir esta página</button>
+    <button id="connect" class="ghost">Conectar cuenta</button>
+    <button id="disconnect" class="link" hidden>Desconectar</button>
+
+    <p class="hint">
+      Tip: en la página de un producto también verás un botón flotante
+      <strong>＋ Glamour</strong>, o haz clic derecho sobre cualquier imagen →
+      “Añadir imagen a Glamour Studio”.
+    </p>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

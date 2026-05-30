@@ -80,6 +80,7 @@ export async function POST(req: Request) {
     "Treat this as a precise EDIT of that first image, NOT a new image: every pixel that is not a garment being replaced must stay IDENTICAL to the first photo.",
     "KEEP THIS EXACT PERSON: face, hairstyle, skin tone, body shape, height and pose must stay identical and recognizable.",
     "PRESERVE THE COMPOSITION EXACTLY: same camera framing, same zoom/scale, same crop, and the person in the SAME position within the frame as the first photo. Do NOT recenter, resize, zoom, shift or re-crop the person. The output must have the SAME aspect ratio as the first image.",
+    "ALWAYS SHOW THE FULL BODY: the entire person must be visible from the top of the head down to the feet/shoes, completely inside the frame, with empty margin above the head and below the feet (exactly like the first image). NEVER crop, cut off or zoom into the head, torso, legs or feet. The feet must always be visible.",
     "",
     "The remaining images are garments to put on the person. From EACH garment image use ONLY the garment itself —",
     "IGNORE any model, mannequin, hanger, background or other clothing shown in those reference photos.",

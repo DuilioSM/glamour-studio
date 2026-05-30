@@ -12,12 +12,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useCloset } from "@/lib/store";
+import { createClient } from "@/lib/supabase/client";
 import { urlToDataURL } from "@/lib/data";
 import {
   processUploadBlob,
   flattenToWhite,
   resizeBlob,
   blobToDataURL,
+  autoFrame,
 } from "@/lib/image";
 
 import { AvatarStage } from "@/components/AvatarStage";
@@ -51,6 +53,8 @@ export default function Play() {
   const saveLook = useCloset((s) => s.saveLook);
   const removeLook = useCloset((s) => s.removeLook);
   const addGarment = useCloset((s) => s.addGarment);
+  const processPending = useCloset((s) => s.processPending);
+  const syncGarments = useCloset((s) => s.syncGarments);
 
   const [stage, setStage] = useState<string | null>(null); // imagen mostrada
   const [deletingId, setDeletingId] = useState<string | null>(null); // look en proceso de borrado
@@ -74,6 +78,44 @@ export default function Play() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Procesa prendas importadas por la extensión (quita fondo + clasifica) en
+  // cuanto haya alguna pendiente tras cargar el guardarropa.
+  const pendingCount = garments.filter((g) => g.pending).length;
+  useEffect(() => {
+    if (loaded && pendingCount > 0) processPending();
+  }, [loaded, pendingCount, processPending]);
+
+  // Realtime: cuando la extensión inserta/actualiza una prenda en Supabase,
+  // re-sincronizamos en vivo (RLS solo entrega filas de este usuario).
+  useEffect(() => {
+    if (!loaded) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("garments-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "garments" },
+        () => syncGarments(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loaded, syncGarments]);
+
+  // Fallback sin Realtime: al volver a esta pestaña también re-sincronizamos.
+  useEffect(() => {
+    const onActive = () => {
+      if (document.visibilityState === "visible") syncGarments();
+    };
+    document.addEventListener("visibilitychange", onActive);
+    window.addEventListener("focus", onActive);
+    return () => {
+      document.removeEventListener("visibilitychange", onActive);
+      window.removeEventListener("focus", onActive);
+    };
+  }, [syncGarments]);
 
   // Redirige a onboarding si falta configuración (tras cargar).
   useEffect(() => {
@@ -149,14 +191,17 @@ export default function Play() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar el look");
 
-      // La IA devuelve un PNG grande -> lo comprimimos a WebP (~70% menos)
-      // antes de guardarlo, para que cargue rápido en la galería.
+      // Normalizamos el encuadre (la persona siempre al mismo tamaño) y de paso
+      // comprimimos a WebP. Si falla, caemos a una compresión simple.
       let lookImage = data.image as string;
       try {
-        const blob = await (await fetch(lookImage)).blob();
-        lookImage = await blobToDataURL(await resizeBlob(blob, 1024));
+        lookImage = await autoFrame(data.image);
       } catch (cmpErr) {
-        console.warn("[look] no se pudo comprimir:", cmpErr);
+        console.warn("[look] autoFrame falló, comprimo simple:", cmpErr);
+        try {
+          const blob = await (await fetch(data.image)).blob();
+          lookImage = await blobToDataURL(await resizeBlob(blob, 1024));
+        } catch {}
       }
 
       const look = await saveLook(

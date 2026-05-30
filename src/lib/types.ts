@@ -15,6 +15,8 @@ export interface Garment {
   src: string;
   category: Category;
   name: string;
+  /** true mientras se procesa una prenda importada (quitar fondo/clasificar). */
+  pending?: boolean;
 }
 
 export interface LookResult {

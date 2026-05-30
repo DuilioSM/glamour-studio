@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/onboarding", "/play"];
+const PROTECTED = ["/onboarding", "/play", "/extension"];
 const AUTH_PAGES = ["/login"];
 
 /** Refresca la sesión en cada request y protege las rutas privadas. */

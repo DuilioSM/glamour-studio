@@ -13,6 +13,8 @@ export interface GarmentItem {
   storage_path: string;
   category: Category;
   name: string;
+  /** true si se importó desde la extensión y aún falta quitarle el fondo. */
+  pending: boolean;
 }
 
 export interface LookItem {
@@ -123,6 +125,7 @@ export async function listGarments(): Promise<GarmentItem[]> {
       storage_path: r.storage_path as string,
       category: r.category as Category,
       name: r.name as string,
+      pending: Boolean(r.pending),
       src: await signed(r.storage_path as string),
     })),
   );
@@ -151,8 +154,34 @@ export async function addGarment(
     storage_path: data.storage_path,
     category: data.category,
     name: data.name,
+    pending: Boolean(data.pending),
     src: await signed(data.storage_path),
   };
+}
+
+/**
+ * Finaliza una prenda importada por la extensión: reemplaza la imagen cruda en
+ * Storage por la ya procesada (fondo quitado) y marca pending=false con su
+ * categoría definitiva. Mantiene el mismo storage_path (upsert).
+ */
+export async function finalizePendingGarment(
+  item: { id: string; storage_path: string },
+  processed: Blob,
+  category: Category,
+): Promise<void> {
+  const supabase = createClient();
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(item.storage_path, processed, {
+      upsert: true,
+      contentType: processed.type || "image/webp",
+    });
+  if (upErr) throw upErr;
+  const { error } = await supabase
+    .from("garments")
+    .update({ pending: false, category })
+    .eq("id", item.id);
+  if (error) throw error;
 }
 
 export async function updateGarmentCategory(

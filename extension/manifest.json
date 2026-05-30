@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Glamour Studio — Añadir prendas",
+  "version": "0.1.0",
+  "description": "Añade prendas de Amazon, Zara, Bershka y más a tu guardarropa de Glamour Studio con un clic.",
+  "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab"],
+  "host_permissions": [
+    "https://glamour-studio-omega.vercel.app/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://*.vercel.app/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Glamour Studio",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://glamour-studio-omega.vercel.app/extension/connect*",
+        "http://localhost:3000/extension/connect*",
+        "http://127.0.0.1:3000/extension/connect*",
+        "https://*.vercel.app/extension/connect*"
+      ],
+      "js": ["config.js", "content_connect.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.amazon.com/*",
+        "*://*.amazon.com.mx/*",
+        "*://*.amazon.es/*",
+        "*://*.zara.com/*",
+        "*://*.bershka.com/*",
+        "*://*.pullandbear.com/*",
+        "*://*.stradivarius.com/*",
+        "*://*.hm.com/*",
+        "*://*.shein.com/*"
+      ],
+      "js": ["config.js", "content_store.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

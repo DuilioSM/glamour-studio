@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCloset } from "@/lib/store";
-import { processUploadBlob } from "@/lib/image";
+import { processUploadBlob, autoFrame, blobToDataURL } from "@/lib/image";
 import { CATEGORIES, type Category } from "@/lib/types";
 import { PrimaryButton, GhostButton, Card } from "@/components/ui";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -56,7 +56,16 @@ export default function Onboarding() {
           setStatus(`Quitando el fondo… ${Math.round(f * 100)}%`),
       });
       setStatus("Guardando…");
-      await setAvatarBlob(blob);
+      // Normalizamos el encuadre del avatar para que coincida con los looks
+      // (mismo tamaño/proporción de la persona en el escenario).
+      let finalBlob = blob;
+      try {
+        const framed = await autoFrame(await blobToDataURL(blob));
+        finalBlob = await (await fetch(framed)).blob();
+      } catch {
+        // si falla, usamos el blob tal cual
+      }
+      await setAvatarBlob(finalBlob);
     } catch (e) {
       console.error(e);
       setStatus("No se pudo procesar/guardar la imagen. Intenta con otra.");
