@@ -18,7 +18,11 @@ interface ClosetState {
   reset: () => void;
 
   setAvatarBlob: (blob: Blob) => Promise<void>;
-  addGarment: (blob: Blob, category: Category, name: string) => Promise<void>;
+  addGarment: (
+    blob: Blob,
+    category: Category,
+    name: string,
+  ) => Promise<GarmentItem>;
   setGarmentCategory: (id: string, category: Category) => Promise<void>;
   removeGarment: (id: string) => Promise<void>;
 
@@ -83,6 +87,21 @@ export const useCloset = create<ClosetState>()((set, get) => ({
   addGarment: async (blob, category, name) => {
     const g = await data.addGarment(blob, category, name);
     set((s) => ({ garments: [...s.garments, g] }));
+
+    // Auto-clasificación en segundo plano: si entró como "other", la analizamos
+    // y reacomodamos su categoría sola (sin bloquear la subida).
+    if (category === "other") {
+      data
+        .classifyGarment(blob)
+        .then((cat) => {
+          if (cat && cat !== "other") {
+            return get().setGarmentCategory(g.id, cat);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return g;
   },
 
   setGarmentCategory: async (id, category) => {

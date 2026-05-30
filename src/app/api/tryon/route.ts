@@ -56,18 +56,35 @@ export async function POST(req: Request) {
     )
     .join("\n");
 
+  // Detecta si hay un vestido / pieza entera (por categoría o por nombre).
+  const hasDress = garments.some(
+    (g) =>
+      g.category === "dress" ||
+      /dress|vestido|gown|jumpsuit|romper|overall|enteriz/i.test(g.name ?? ""),
+  );
+
   const prompt = [
     "You are a virtual try-on / fashion stylist image generator.",
-    "The FIRST image is a full-body photo of a person. Keep this exact person:",
-    "their face, hairstyle, skin tone, body shape and pose must stay identical and recognizable.",
     "",
-    "The following images are individual clothing items / accessories:",
+    "The FIRST image is a full-body photo of a person. KEEP THIS EXACT PERSON:",
+    "their face, hairstyle, skin tone, body shape, height and pose must stay identical and recognizable.",
+    "",
+    "The remaining images are the ONLY clothing items / accessories the person should wear now:",
     garmentList,
     "",
-    "Task: generate ONE new photorealistic full-body image of the SAME person now WEARING all of those clothing items together as a single coherent outfit.",
-    "Dress them realistically (correct fit, layering, natural folds, shadows and lighting that match the body).",
-    "Replace their current outfit with the provided garments. Keep a clean, neutral studio-like background.",
-    "Do not add text, watermarks, logos or extra people. Output only the final image.",
+    "GOAL: produce ONE photorealistic full-body image of the SAME person wearing a NEW outfit",
+    "composed EXCLUSIVELY of the provided garments.",
+    "",
+    "STRICT RULES (very important):",
+    "1. COMPLETELY REMOVE and REPLACE the person's original clothing (the tank top, jeans, etc. in the first photo). None of the original garments may remain visible.",
+    "2. The final outfit must consist ONLY of the provided garments (plus the provided shoes/accessories). Do NOT invent extra clothing and do NOT keep any original item.",
+    hasDress
+      ? "3. A DRESS / one-piece is included: the person must wear ONLY that dress on the torso AND legs. There must be ABSOLUTELY NO pants, jeans, leggings, shorts or skirt visible under or below the dress. Show the bare legs naturally below the hem."
+      : "3. If any provided garment is a dress, gown, jumpsuit or one-piece, the person wears ONLY that on torso and legs — no pants/jeans/skirt under or below it; show bare legs below the hem.",
+    "4. For body areas not covered by any provided garment, use simple, plain, neutral basics that match the look — never reuse the original patterned clothes (no original jeans, no original top).",
+    "5. Dress them realistically: correct fit and drape, natural folds, layering, and shadows/lighting consistent with the body and pose.",
+    "",
+    "Output: a clean, neutral studio-like background. No text, watermarks, logos, collage or extra people. Return only the final image.",
   ].join("\n");
 
   try {

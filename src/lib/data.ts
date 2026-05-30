@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { blobToDataURL } from "@/lib/image";
 import type { Category } from "@/lib/types";
 
 const BUCKET = "wardrobe";
@@ -50,6 +51,23 @@ export async function urlToDataURL(url: string): Promise<string> {
     r.onerror = reject;
     r.readAsDataURL(blob);
   });
+}
+
+/** Clasifica una prenda (Blob) usando el endpoint de visión. */
+export async function classifyGarment(blob: Blob): Promise<Category> {
+  try {
+    const dataUrl = await blobToDataURL(blob);
+    const res = await fetch("/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+    if (!res.ok) return "other";
+    const data = (await res.json()) as { category?: Category };
+    return data.category ?? "other";
+  } catch {
+    return "other";
+  }
 }
 
 function dataURLtoBlob(dataUrl: string): Blob {
