@@ -1,5 +1,5 @@
 {
-  "project-name": "<FILL THIS>",
-  "project-oneliner": "<FILL THIS>",
-  "project-description": "<FILL THIS>"
+  "project-name": "Glamour Studio",
+  "project-oneliner": "Viste tu avatar con tu ropa real y deja que la IA genere tu look.",
+  "project-description": "Glamour Studio es un probador virtual con IA: subes una foto de cuerpo completo y fotos de tu ropa real (con quitado de fondo automático), y al tocar las prendas la IA genera al instante cómo te quedaría el outfit puesto. Tiene un Modo Libre para crear y guardar looks sin límites, y un Modo Historia con niveles de outfit que se superan ganando hasta 3 estrellas. Incluye una extensión para importar prendas desde tiendas (Amazon, Zara, Bershka…). Construido con Next.js, React, Supabase y la AI SDK, con una interfaz mobile-first estilo \"boutique de caramelo\"."
 }
