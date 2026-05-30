@@ -1,21 +1,53 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Glamour Studio — sistema de diseño "boutique de caramelo"
+   Tema único (light). Acento bloqueado: rosa magenta.
+   Estrellas del modo historia: oro. Soporte: uva/lila.
+   ============================================================ */
 :root {
-  --background: #fff0f6;
-  --foreground: #3d1530;
-  --pink: #ff5fa2;
-  --pink-dark: #e23b86;
-  --pink-soft: #ffd6e8;
-  --lilac: #c77dff;
+  /* Neutros cálidos (nada de blanco puro) */
+  --background: #fff4fa;
+  --surface: #fffafd;
+  --foreground: #3d1430; /* tinta ciruela */
+  --muted: #8a6a80;
+
+  /* Acento de marca (bloqueado) */
+  --pink: #ff4d97;
+  --pink-dark: #d8276f;
+  --pink-soft: #ffd9ea;
+
+  /* Soporte */
+  --lilac: #b57bf0;
+  --grape: #7c3aed;
+  --gold: #ffc233;
+
+  /* Radios (forma bloqueada: cards 28, controles pill, inputs 14) */
+  --radius-sm: 14px;
+  --radius: 20px;
+  --radius-lg: 28px;
+
+  /* Sombras tintadas (nunca negro puro) */
+  --shadow-card: 0 10px 30px -12px rgba(216, 39, 111, 0.25);
+  --shadow-float: 0 18px 50px -16px rgba(216, 39, 111, 0.35);
+  --pop: 0 6px 0 var(--pink-dark);
+  --pop-press: 0 2px 0 var(--pink-dark);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
   --color-pink: var(--pink);
   --color-pink-dark: var(--pink-dark);
   --color-pink-soft: var(--pink-soft);
   --color-lilac: var(--lilac);
+  --color-grape: var(--grape);
+  --color-gold: var(--gold);
+
+  --radius-card: var(--radius-lg);
+
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-display);
 }
@@ -26,16 +58,34 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(circle at 15% 10%, #ffe3f1 0%, transparent 40%),
-    radial-gradient(circle at 85% 20%, #f3e0ff 0%, transparent 45%),
-    var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), "Comic Sans MS", system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Fondo cohesivo: mesh suave de caramelo sobre marfil */
+  background-color: var(--background);
+  background-image:
+    radial-gradient(40rem 40rem at 8% -5%, #ffe1f0 0%, transparent 55%),
+    radial-gradient(38rem 38rem at 100% 0%, #efe2ff 0%, transparent 55%),
+    radial-gradient(48rem 48rem at 50% 120%, #ffeef6 0%, transparent 60%);
+  background-attachment: fixed;
 }
 
-/* Scrollbar rosa para el guardarropa */
+/* Grano sutil fijo (no sobre contenedores con scroll) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scrollbar de marca */
 .fancy-scroll::-webkit-scrollbar {
   width: 10px;
 }
@@ -48,25 +98,49 @@ body {
   border-radius: 999px;
 }
 
+/* ---------- Animaciones ---------- */
 @keyframes pop {
   0% { transform: scale(0.9); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
-.animate-pop {
-  animation: pop 0.18s ease-out;
-}
+.animate-pop { animation: pop 0.18s ease-out; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 1.2s linear infinite; }
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--pink-soft);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
 }
 
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
-}
-.animate-spin-slow {
-  animation: spin-slow 1.2s linear infinite;
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-spin-slow,
+  .animate-pop,
+  .skeleton::after {
+    animation: none !important;
+  }
 }

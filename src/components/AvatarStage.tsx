@@ -28,7 +28,7 @@ export function AvatarStage({
         if (id) onDropGarment(id);
       }}
       className={clsx(
-        "relative mx-auto flex aspect-[3/4] w-full max-w-sm items-center justify-center overflow-hidden rounded-[2rem] border-4 bg-gradient-to-b from-pink-soft/40 to-white shadow-xl transition",
+        "relative mx-auto flex aspect-[3/4] w-full max-w-sm items-center justify-center overflow-hidden rounded-[2rem] border-4 bg-white shadow-xl transition",
         over
           ? "scale-[1.02] border-lilac ring-4 ring-lilac/30"
           : "border-white",

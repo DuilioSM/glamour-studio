@@ -60,7 +60,9 @@ export async function POST(req: Request) {
     "You are a virtual try-on image generator.",
     "",
     "The FIRST image is a full-body photo of a person wearing an ORIGINAL outfit.",
+    "Treat this as a precise EDIT of that first image, NOT a new image: every pixel that is not a garment being replaced must stay IDENTICAL to the first photo.",
     "KEEP THIS EXACT PERSON: face, hairstyle, skin tone, body shape, height and pose must stay identical and recognizable.",
+    "PRESERVE THE COMPOSITION EXACTLY: same camera framing, same zoom/scale, same crop, and the person in the SAME position within the frame as the first photo. Do NOT recenter, resize, zoom, shift or re-crop the person. The output must have the SAME aspect ratio as the first image.",
     "",
     "The remaining images are garments to put on the person. From EACH garment image use ONLY the garment itself —",
     "IGNORE any model, mannequin, hanger, background or other clothing shown in those reference photos.",
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
     "2. A dress, gown, jumpsuit or one-piece covers BOTH the upper and lower body: it replaces the top AND the bottom together, so there must be NO pants, jeans, leggings, shorts or skirt visible under or below it (show bare legs below the hem).",
     "3. Do NOT add any garment or accessory that was neither provided nor already worn in the original photo.",
     "4. Fit each new garment realistically: correct drape, folds, layering, and shadows/lighting consistent with the body and pose. Keep the same framing as the first photo.",
-    "5. BACKGROUND: keep it the SAME plain, solid, light neutral background as the first photo (white / very light gray). The background color must NOT change and must NEVER be tinted, colored or influenced by the garment colors. For example, a green top must NOT make the background greenish. No colored backdrops, gradients, scenery or props.",
+    "5. BACKGROUND: keep the background PIXEL-IDENTICAL to the first photo — same exact color and brightness. Do NOT relight, recolor, brighten, darken or tint it, and NEVER let the garment colors influence it. For example, a green top must NOT make the background greenish, and a dark garment must NOT darken the backdrop. No colored backdrops, gradients, scenery or props.",
     "",
     "Output: the full-body result on that same clean, neutral, uncolored light background. No text, watermarks, logos, collage or extra people. Return only the final image.",
   ].join("\n");

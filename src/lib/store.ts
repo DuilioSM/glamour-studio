@@ -138,9 +138,23 @@ export const useCloset = create<ClosetState>()((set, get) => ({
   },
 
   removeLook: async (id) => {
-    const l = get().looks.find((x) => x.id === id);
-    if (!l) return;
-    await data.removeLook(l);
+    const looks = get().looks;
+    const index = looks.findIndex((x) => x.id === id);
+    if (index === -1) return;
+    const l = looks[index];
+    // Optimista: quitamos de la UI al instante y borramos en el servidor
+    // en segundo plano. Así la galería no se "cuelga" esperando la red.
     set((s) => ({ looks: s.looks.filter((x) => x.id !== id) }));
+    try {
+      await data.removeLook(l);
+    } catch (e) {
+      // Si falla el borrado, restauramos el look en su posición original.
+      set((s) => {
+        const next = s.looks.slice();
+        next.splice(Math.min(index, next.length), 0, l);
+        return { looks: next };
+      });
+      throw e;
+    }
   },
 }));

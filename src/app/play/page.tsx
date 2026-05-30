@@ -10,9 +10,10 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { useCloset } from "@/lib/store";
 import { urlToDataURL } from "@/lib/data";
-import { processUploadBlob } from "@/lib/image";
+import { processUploadBlob, flattenToWhite } from "@/lib/image";
 
 const MAX_GARMENTS = 10;
 import { AvatarStage } from "@/components/AvatarStage";
@@ -48,6 +49,7 @@ export default function Play() {
   const addGarment = useCloset((s) => s.addGarment);
 
   const [stage, setStage] = useState<string | null>(null); // imagen mostrada
+  const [deletingId, setDeletingId] = useState<string | null>(null); // look en proceso de borrado
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -118,9 +120,14 @@ export default function Play() {
     setError(null);
     try {
       // Las imágenes viven en Storage (URL firmada) -> a data URL para la IA.
+      // Las aplanamos sobre BLANCO para que la IA reciba un fondo blanco
+      // explícito (evita que interprete la transparencia como negro) y así el
+      // fondo del resultado sea siempre blanco consistente.
       const [avatarData, garmentDatas] = await Promise.all([
-        urlToDataURL(avatar.src),
-        Promise.all(selGarments.map((g) => urlToDataURL(g.src))),
+        urlToDataURL(avatar.src).then(flattenToWhite),
+        Promise.all(
+          selGarments.map((g) => urlToDataURL(g.src).then(flattenToWhite)),
+        ),
       ]);
 
       const res = await fetch("/api/tryon", {
@@ -170,6 +177,21 @@ export default function Play() {
     const t = setTimeout(() => generate(), 500);
     return () => clearTimeout(t);
   }, [selected, generating, avatar, generate]);
+
+  // Borra un look con animación: marca "eliminando" (overlay) y el borrado es
+  // optimista en el store, así la salida es suave y no se queda colgado.
+  const handleRemoveLook = useCallback(
+    async (id: string) => {
+      if (deletingId) return;
+      setDeletingId(id);
+      try {
+        await removeLook(id);
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deletingId, removeLook],
+  );
 
   // Al soltar una prenda sobre el avatar: añadir (sin quitar) -> dispara auto-gen.
   const onDrop = useCallback(
@@ -425,27 +447,59 @@ export default function Play() {
             💖 Tus looks {loading && "…"}
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-            {looks.map((l) => (
-              <div
-                key={l.id}
-                className="group relative aspect-[3/4] overflow-hidden rounded-2xl border-2 border-white bg-white shadow"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={l.src}
-                  alt="Look"
-                  className="h-full w-full cursor-pointer object-cover"
-                  onClick={() => setStage(l.src)}
-                />
-                <button
-                  onClick={() => removeLook(l.id)}
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-pink-dark opacity-0 shadow transition group-hover:opacity-100 hover:bg-pink hover:text-white"
-                  aria-label="Eliminar look"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {looks.map((l) => {
+                const isDeleting = deletingId === l.id;
+                return (
+                  <motion.div
+                    key={l.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 420,
+                      damping: 32,
+                    }}
+                    className="group relative aspect-[3/4] overflow-hidden rounded-2xl border-2 border-white bg-white shadow"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={l.src}
+                      alt="Look"
+                      className="h-full w-full cursor-pointer object-cover"
+                      onClick={() => !isDeleting && setStage(l.src)}
+                    />
+                    <button
+                      onClick={() => handleRemoveLook(l.id)}
+                      disabled={isDeleting}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-pink-dark opacity-0 shadow transition group-hover:opacity-100 hover:bg-pink hover:text-white disabled:opacity-0"
+                      aria-label="Eliminar look"
+                    >
+                      ✕
+                    </button>
+
+                    {/* Overlay "eliminando…" mientras se borra. */}
+                    <AnimatePresence>
+                      {isDeleting && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-pink-dark/35 backdrop-blur-[2px]"
+                        >
+                          <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-white/40 border-t-white" />
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-white drop-shadow">
+                            Eliminando…
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </section>
       )}

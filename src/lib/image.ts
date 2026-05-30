@@ -1,4 +1,29 @@
 /**
+ * Aplana una imagen (data URL, normalmente PNG transparente) sobre fondo BLANCO
+ * y la devuelve como JPEG. Así la IA recibe un fondo blanco explícito (no una
+ * transparencia ambigua que interpreta como negro) y mantiene el fondo blanco
+ * de forma consistente.
+ */
+export function flattenToWhite(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("No 2d context"));
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.92));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+/**
  * Redimensiona una imagen (File o data URL) a un lado máximo conservando proporción
  * y la devuelve como data URL JPEG/PNG. Mantiene los payloads pequeños para
  * localStorage/IndexedDB y para abaratar las llamadas a la IA.
